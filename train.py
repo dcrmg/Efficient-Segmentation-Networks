@@ -32,11 +32,11 @@ GLOBAL_SEED = 1234
 def parse_args():
     parser = ArgumentParser(description='Efficient semantic segmentation')
     parser.add_argument('--gpus', type=str, default="6", help="default GPU devices (2,3)")
-    parser.add_argument('--batch_size', type=int, default=4, help="the batch size is set to 16 for 2 GPUs")
+    parser.add_argument('--batch_size', type=int, default=6, help="the batch size is set to 16 for 2 GPUs")
     parser.add_argument('--val_interval', type=int, default=1, help="evaluate and save model interval")
     # model and dataset
     parser.add_argument('--model', type=str, default="DFANet", help="model name:ESPNet_v2,ESNet  (default ENet)")
-    parser.add_argument('--dataset', type=str, default="cityscapes", help="dataset: cityscapes or camvid")
+    parser.add_argument('--dataset', type=str, default="ade20k", help="dataset: cityscapes or camvid, ade20k")
     parser.add_argument('--num_workers', type=int, default=8, help=" the number of parallel threads")
     parser.add_argument('--train_type', type=str, default="trainval",
                         help="ontrain for training on train set, ontrainval for training on train+val set")
@@ -105,7 +105,7 @@ def train_model(args):
 
     # load data and data augmentation
     datas, trainLoader, valLoader = build_dataset_train(args.dataset, input_size, args.batch_size, args.train_type,
-                                                        args.random_scale, args.random_mirror, args.num_workers)
+                                                        args.random_scale, args.random_mirror, args.num_workers, args)
 
     args.per_iter = len(trainLoader)
     args.max_iter = args.max_epochs * args.per_iter
@@ -115,25 +115,31 @@ def train_model(args):
     print('mean and std: ', datas['mean'], datas['std'])
 
     # define loss function, respectively
-    weight = torch.from_numpy(datas['classWeights'])
+    if args.dataset != 'ade20k':
+        weight = torch.from_numpy(datas['classWeights'])
+    else:
+        weight = None
 
     if args.dataset == 'camvid':
         criteria = CrossEntropyLoss2d(weight=weight, ignore_label=ignore_label)
-    elif args.dataset == 'camvid' and args.use_label_smoothing:
-        criteria = CrossEntropyLoss2dLabelSmooth(weight=weight, ignore_label=ignore_label)
-
-    elif args.dataset == 'cityscapes' and args.use_ohem:
-        min_kept = int(args.batch_size // len(args.gpus) * h * w // 16)
-        criteria = ProbOhemCrossEntropy2d(use_weight=True, ignore_label=ignore_label, thresh=0.7, min_kept=min_kept)
-    elif args.dataset == 'cityscapes' and args.use_label_smoothing:
-        criteria = CrossEntropyLoss2dLabelSmooth(weight=weight, ignore_label=ignore_label)
-    elif args.dataset == 'cityscapes' and args.use_lovaszsoftmax:
-        criteria = LovaszSoftmax(ignore_index=ignore_label)
-    elif args.dataset == 'cityscapes' and args.use_focal:
-        criteria = FocalLoss2d(weight=weight, ignore_index=ignore_label)
+        if args.use_label_smoothing:
+            criteria = CrossEntropyLoss2dLabelSmooth(weight=weight, ignore_label=ignore_label)
+    elif args.dataset == 'cityscapes':
+        criteria = CrossEntropyLoss2d(weight=weight, ignore_label=ignore_label)
+        if args.use_ohem:
+            min_kept = int(args.batch_size // len(args.gpus) * h * w // 16)
+            criteria = ProbOhemCrossEntropy2d(use_weight=True, ignore_label=ignore_label, thresh=0.7, min_kept=min_kept)
+        elif args.use_label_smoothing:
+            criteria = CrossEntropyLoss2dLabelSmooth(weight=weight, ignore_label=ignore_label)
+        elif args.use_lovaszsoftmax:
+            criteria = LovaszSoftmax(ignore_index=ignore_label)
+        elif args.use_focal:
+            criteria = FocalLoss2d(weight=weight, ignore_index=ignore_label)
+    elif args.dataset == 'ade20k':
+        criteria = CrossEntropyLoss2d(weight=weight, ignore_label=ignore_label)
     else:
         raise NotImplementedError(
-            "This repository now supports two datasets: cityscapes and camvid, %s is not included" % args.dataset)
+            "This repository now supports datasets: cityscapes, camvid and ade20k, %s is not included" % args.dataset)
 
     if args.cuda:
         criteria = criteria.cuda()
@@ -292,12 +298,10 @@ def train(args, train_loader, model, criterion, optimizer, epoch):
             scheduler = WarmupPolyLR(optimizer, T_max=args.max_iter, cur_iter=args.cur_iter, warmup_factor=1.0 / 3,
                                  warmup_iters=args.warmup_iters, power=0.9)
 
-
-
         lr = optimizer.param_groups[0]['lr']
 
         start_time = time.time()
-        images, labels, _, _ = batch
+        images, labels, _, = batch
 
         if torch_ver == '0.3':
             images = Variable(images).cuda()
@@ -311,7 +315,7 @@ def train(args, train_loader, model, criterion, optimizer, epoch):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        scheduler.step() # In pytorch 1.1.0 and later, should call 'optimizer.step()' before 'lr_scheduler.step()'
+        scheduler.step()
         epoch_loss.append(loss.item())
         time_taken = time.time() - start_time
 

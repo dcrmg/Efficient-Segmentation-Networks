@@ -3,9 +3,12 @@ import pickle
 from torch.utils import data
 from dataset.cityscapes import CityscapesDataSet, CityscapesTrainInform, CityscapesValDataSet, CityscapesTestDataSet
 from dataset.camvid import CamVidDataSet, CamVidValDataSet, CamVidTrainInform, CamVidTestDataSet
+from dataset.ade20k import ADE20KSegmentation
+from torchvision import transforms
+from dataset.distributed import make_data_sampler, make_batch_data_sampler
 
 
-def build_dataset_train(dataset, input_size, batch_size, train_type, random_scale, random_mirror, num_workers):
+def build_dataset_train(dataset, input_size, batch_size, train_type, random_scale, random_mirror, num_workers, args):
     data_dir = os.path.join('/media/sdb/datasets/segment/', dataset)
     dataset_list = dataset + '_trainval_list.txt'
     train_data_list = os.path.join(data_dir, dataset + '_' + train_type + '_list.txt')
@@ -36,9 +39,6 @@ def build_dataset_train(dataset, input_size, batch_size, train_type, random_scal
             CityscapesValDataSet(data_dir, val_data_list, f_scale=1, mean=datas['mean']),
             batch_size=1, shuffle=True, num_workers=num_workers, pin_memory=True,
             drop_last=True)
-
-        return datas, trainLoader, valLoader
-
     elif dataset == "camvid":
         # inform_data_file collect the information of mean, std and weigth_class
         if not os.path.isfile(inform_data_file):
@@ -61,14 +61,40 @@ def build_dataset_train(dataset, input_size, batch_size, train_type, random_scal
         valLoader = data.DataLoader(
             CamVidValDataSet(data_dir, val_data_list, f_scale=1, mean=datas['mean']),
             batch_size=1, shuffle=True, num_workers=num_workers, pin_memory=True)
-
-        return datas, trainLoader, valLoader
     elif dataset == "ade20k":
-        raise NotImplementedError(
-            " ade20k is not supported now")
+        inform_data_file = os.path.join('./dataset/inform/', 'cityscapes_inform.pkl')
+        datas = pickle.load(open(inform_data_file, "rb"))
+
+        input_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize([.485, .456, .406], [.229, .224, .225]),
+        ])
+
+        data_kwargs = {'transform': input_transform, 'base_size': 520,
+                       'crop_size': 480, 'encode': False}
+        train_dataset = ADE20KSegmentation(split='train', mode='train', **data_kwargs)
+        val_dataset = ADE20KSegmentation(split='val', mode='val', **data_kwargs)
+
+        train_sampler = make_data_sampler(train_dataset, shuffle=True, distributed=False)
+        train_batch_sampler = make_batch_data_sampler(train_sampler, batch_size)
+        val_sampler = make_data_sampler(val_dataset, shuffle=False, distributed=False)
+        val_batch_sampler = make_batch_data_sampler(val_sampler, batch_size)
+
+        trainLoader = data.DataLoader(dataset=train_dataset,
+                                 batch_sampler=train_batch_sampler,
+                                 num_workers=args.num_workers,
+                                 pin_memory=True)
+        valLoader = data.DataLoader(dataset=val_dataset,
+                                     batch_sampler=val_batch_sampler,
+                                     num_workers=args.num_workers,
+                                     pin_memory=True)
+
+        trainLoader = valLoader  # lpw
+
     else:
         raise NotImplementedError(
             "This repository now supports datasets: cityscapes, camvid and ade20k, %s is not included" % dataset)
+    return datas, trainLoader, valLoader
 
 
 def build_dataset_test(dataset, num_workers, none_gt=False):
