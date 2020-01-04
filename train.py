@@ -31,7 +31,8 @@ GLOBAL_SEED = 1234
 
 def parse_args():
     parser = ArgumentParser(description='Efficient semantic segmentation')
-    parser.add_argument('--gpus', type=str, default="2, 3", help="default GPU devices (2,3)")
+    parser.add_argument('--gpus', type=str, default="6", help="default GPU devices (2,3)")
+    parser.add_argument('--batch_size', type=int, default=4, help="the batch size is set to 16 for 2 GPUs")
     parser.add_argument('--val_interval', type=int, default=1, help="evaluate and save model interval")
     # model and dataset
     parser.add_argument('--model', type=str, default="DFANet", help="model name:ESPNet_v2,ESNet  (default ENet)")
@@ -40,12 +41,11 @@ def parse_args():
     parser.add_argument('--train_type', type=str, default="trainval",
                         help="ontrain for training on train set, ontrainval for training on train+val set")
     # training hyper params
-    parser.add_argument('--max_epochs', type=int, default=1000,
+    parser.add_argument('--max_epochs', type=int, default=500,
                         help="the number of epochs: 300 for train set, 350 for train+val set")
     parser.add_argument('--random_mirror', type=bool, default=True, help="input image random mirror")
     parser.add_argument('--random_scale', type=bool, default=True, help="input image resize 0.5 to 2")
     parser.add_argument('--lr', type=float, default=2e-3, help="initial learning rate")
-    parser.add_argument('--batch_size', type=int, default=16, help="the batch size is set to 16 for 2 GPUs")
     # sgd for ESPNet_V2
     parser.add_argument('--optim',type=str.lower,default='sgd',choices=['sgd','adam','radam','ranger'],help="select optimizer")
     parser.add_argument('--lr_schedule', type=str, default='warmpoly', help='name of lr schedule: poly')
