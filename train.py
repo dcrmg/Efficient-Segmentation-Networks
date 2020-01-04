@@ -347,7 +347,7 @@ def val(args, val_loader, model):
     total_batches = len(val_loader)
 
     data_list = []
-    for i, (input, label, size, name) in enumerate(val_loader):
+    for i, (input, label, _) in enumerate(val_loader):
         with torch.no_grad():
             # input_var = Variable(input).cuda()
             input_var = input.cuda()
