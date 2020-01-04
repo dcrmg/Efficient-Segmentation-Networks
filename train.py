@@ -301,7 +301,7 @@ def train(args, train_loader, model, criterion, optimizer, epoch):
         lr = optimizer.param_groups[0]['lr']
 
         start_time = time.time()
-        images, labels, _, = batch
+        images, labels, _, _ = batch
 
         if torch_ver == '0.3':
             images = Variable(images).cuda()
@@ -347,7 +347,7 @@ def val(args, val_loader, model):
     total_batches = len(val_loader)
 
     data_list = []
-    for i, (input, label, _) in enumerate(val_loader):
+    for i, (input, label, size, name) in enumerate(val_loader):
         with torch.no_grad():
             # input_var = Variable(input).cuda()
             input_var = input.cuda()

@@ -42,7 +42,7 @@ The project supports these semantic segmentation models as follows:
 - (**DABNet**)  Depth-wise Asymmetric Bottleneck for Real-time Semantic Segmentation [[Paper]](https://arxiv.org/pdf/1907.11357.pdf)
 - (**ContextNet**)  Exploring Context and Detail  for Semantic Segmentation in Real-time [[Paper]](https://arxiv.org/pdf/1805.04554.pdf)
 - (**FPENet**) Feature Pyramid Encoding Network for Real-time Semantic Segmentation [[Paper]](https://arxiv.org/pdf/1909.08599v1.pdf)
-- (**DFANet**) DFANet: Deep Feature Aggregation for Real-Time Semantic Segmentation [[Paper](https://arxiv.org/pdf/1904.02216.pdf)
+- (**DFANet**) DFANet: Deep Feature Aggregation for Real-Time Semantic Segmentation [[Paper]](https://arxiv.org/pdf/1904.02216.pdf)
 - ...
 
 #### Losses

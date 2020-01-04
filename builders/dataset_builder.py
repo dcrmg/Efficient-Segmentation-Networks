@@ -88,9 +88,6 @@ def build_dataset_train(dataset, input_size, batch_size, train_type, random_scal
                                      batch_sampler=val_batch_sampler,
                                      num_workers=args.num_workers,
                                      pin_memory=True)
-
-        trainLoader = valLoader  # lpw
-
     else:
         raise NotImplementedError(
             "This repository now supports datasets: cityscapes, camvid and ade20k, %s is not included" % dataset)
