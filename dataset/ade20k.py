@@ -68,7 +68,7 @@ class ADE20KSegmentation(SegmentationDataset):
         # general resize, normalize and to Tensor
         if self.transform is not None:
             img = self.transform(img)
-        return img, mask, os.path.basename(self.images[index])
+        return img, mask, img.size(), os.path.basename(self.images[index])
 
     def _mask_transform(self, mask, encode_flage=False):
         if(encode_flage):

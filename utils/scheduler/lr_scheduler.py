@@ -54,7 +54,7 @@ class WarmupPolyLR(_LRScheduler):
 
     def get_lr(self):
         if self.cur_iter <= self.warmup_iters:
-            alpha = self.cur_iter / self.warmup_iters
+            alpha = float(self.cur_iter) / self.warmup_iters
             warmup_factor = self.warmup_factor * (1 - alpha) + alpha
             # print(self.base_lrs[0]*warmup_factor)
             return [lr * warmup_factor for lr in self.base_lrs]

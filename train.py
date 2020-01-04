@@ -32,8 +32,8 @@ GLOBAL_SEED = 1234
 def parse_args():
     parser = ArgumentParser(description='Efficient semantic segmentation')
     parser.add_argument('--gpus', type=str, default="6", help="default GPU devices (2,3)")
-    parser.add_argument('--batch_size', type=int, default=6, help="the batch size is set to 16 for 2 GPUs")
-    parser.add_argument('--val_interval', type=int, default=1, help="evaluate and save model interval")
+    parser.add_argument('--batch_size', type=int, default=12, help="the batch size is set to 16 for 2 GPUs")
+    parser.add_argument('--val_interval', type=int, default=5, help="evaluate and save model interval")
     # model and dataset
     parser.add_argument('--model', type=str, default="DFANet", help="model name:ESPNet_v2,ESNet  (default ENet)")
     parser.add_argument('--dataset', type=str, default="ade20k", help="dataset: cityscapes or camvid, ade20k")
@@ -46,12 +46,11 @@ def parse_args():
     parser.add_argument('--random_mirror', type=bool, default=True, help="input image random mirror")
     parser.add_argument('--random_scale', type=bool, default=True, help="input image resize 0.5 to 2")
     parser.add_argument('--lr', type=float, default=2e-3, help="initial learning rate")
-    # sgd for ESPNet_V2
     parser.add_argument('--optim',type=str.lower,default='sgd',choices=['sgd','adam','radam','ranger'],help="select optimizer")
-    parser.add_argument('--lr_schedule', type=str, default='warmpoly', help='name of lr schedule: poly')
+    parser.add_argument('--lr_schedule', type=str, default='warmpoly', help='name of lr schedule: poly, warmpoly')
     parser.add_argument('--num_cycles', type=int, default=1, help='Cosine Annealing Cyclic LR')
     parser.add_argument('--poly_exp', type=float, default=0.9,help='polynomial LR exponent')
-    parser.add_argument('--warmup_iters', type=int, default=500, help='warmup iterations')
+    parser.add_argument('--warmup_iters', type=int, default=50, help='warmup iterations')
     parser.add_argument('--warmup_factor', type=float, default=1.0 / 3, help='warm up start lr=warmup_factor*lr')
     parser.add_argument('--use_label_smoothing', action='store_true', default=False, help="CrossEntropy2d Loss with label smoothing or not")
     parser.add_argument('--use_ohem', action='store_true', default=False, help='OhemCrossEntropy2d Loss for cityscapes dataset')
@@ -284,19 +283,15 @@ def train(args, train_loader, model, criterion, optimizer, epoch):
 
     total_batches = len(train_loader)
     print("=====> the number of iterations per epoch: ", total_batches)
+
+    if args.lr_schedule == 'poly':
+        lambda1 = lambda epoch_val: math.pow((1 - (epoch / args.max_epochs)), args.poly_exp)
+        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
+    elif args.lr_schedule == 'warmpoly':
+        scheduler = WarmupPolyLR(optimizer, T_max=args.max_epochs, cur_iter=epoch, warmup_factor=1.0 / 3,
+                                 warmup_iters=args.warmup_iters, power=0.9)
     st = time.time()
     for iteration, batch in enumerate(train_loader, 0):
-
-        args.per_iter = total_batches
-        args.max_iter = args.max_epochs * args.per_iter
-        args.cur_iter = epoch * args.per_iter + iteration
-        # learming scheduling
-        if args.lr_schedule == 'poly':
-            lambda1 = lambda epoch: math.pow((1 - (args.cur_iter / args.max_iter)), args.poly_exp)
-            scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
-        elif args.lr_schedule == 'warmpoly':
-            scheduler = WarmupPolyLR(optimizer, T_max=args.max_iter, cur_iter=args.cur_iter, warmup_factor=1.0 / 3,
-                                 warmup_iters=args.warmup_iters, power=0.9)
 
         lr = optimizer.param_groups[0]['lr']
 
@@ -319,7 +314,7 @@ def train(args, train_loader, model, criterion, optimizer, epoch):
         epoch_loss.append(loss.item())
         time_taken = time.time() - start_time
 
-        if iteration % 200 == 0:
+        if iteration % 100 == 0:
             print('=====> epoch[%d/%d] iter: (%d/%d) \tcur_lr: %.6f loss: %.3f time:%.2f' % (epoch + 1, args.max_epochs,
                                                                                          iteration + 1, total_batches,
                                                                                          lr, loss.item(), time_taken))
@@ -354,7 +349,7 @@ def val(args, val_loader, model):
         start_time = time.time()
         output = model(input_var)
         time_taken = time.time() - start_time
-        if (i % 200==0):
+        if (i % 100==0):
             print("[%d/%d]  time: %.2f" % (i + 1, total_batches, time_taken))
         output = output.cpu().data[0].numpy()
         gt = np.asarray(label[0].numpy(), dtype=np.uint8)
