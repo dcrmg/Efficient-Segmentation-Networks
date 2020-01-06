@@ -231,4 +231,3 @@ This project is released under the MIT License. See [LICENSE](https://github.com
 [python-url]: https://www.python.org/
 [pytorch-image]: https://img.shields.io/badge/PyTorch-1.1-2BAF2B.svg
 [pytorch-url]: https://pytorch.org/
-

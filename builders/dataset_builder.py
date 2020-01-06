@@ -70,8 +70,8 @@ def build_dataset_train(dataset, input_size, batch_size, train_type, random_scal
             transforms.Normalize([.485, .456, .406], [.229, .224, .225]),
         ])
 
-        data_kwargs = {'transform': input_transform, 'base_size': 520,
-                       'crop_size': 480, 'encode': False}
+        data_kwargs = {'transform': input_transform, 'base_size': args.input_size[0]+40,
+                       'crop_size': args.input_size[0], 'encode': False}
         train_dataset = ADE20KSegmentation(split='train', mode='train', **data_kwargs)
         val_dataset = ADE20KSegmentation(split='val', mode='val', **data_kwargs)
 
