@@ -31,21 +31,21 @@ GLOBAL_SEED = 1234
 
 def parse_args():
     parser = ArgumentParser(description='Efficient semantic segmentation')
-    parser.add_argument('--gpus', type=str, default="2", help="default GPU devices (2,3)")
-    parser.add_argument('--batch_size', type=int, default=6, help="the batch size is set to 16 for 2 GPUs")
-    parser.add_argument('--val_interval', type=int, default=8, help="evaluate and save model interval")
+    parser.add_argument('--gpus', type=str, default="5", help="default GPU devices (2,3)")
+    parser.add_argument('--batch_size', type=int, default=8, help="the batch size is set to 16 for 2 GPUs")
+    parser.add_argument('--val_interval', type=int, default=1, help="evaluate and save model interval")
     # model and dataset
-    parser.add_argument('--model', type=str, default="ESPNet_v2", help="model name:ESPNet_v2,ESNet  (default ENet)")
+    parser.add_argument('--model', type=str, default="DABNet", help="model name:ESPNet_v2,ESNet  (default ENet)")
     parser.add_argument('--dataset', type=str, default="cityscapes", help="dataset: cityscapes or camvid, ade20k")
     parser.add_argument('--num_workers', type=int, default=8, help=" the number of parallel threads")
     parser.add_argument('--train_type', type=str, default="trainval",
                         help="ontrain for training on train set, ontrainval for training on train+val set")
     # training hyper params
-    parser.add_argument('--max_epochs', type=int, default=200,
+    parser.add_argument('--max_epochs', type=int, default=100,
                         help="the number of epochs: 300 for train set, 350 for train+val set")
     parser.add_argument('--random_mirror', type=bool, default=True, help="input image random mirror")
     parser.add_argument('--random_scale', type=bool, default=True, help="input image resize 0.5 to 2")
-    parser.add_argument('--lr', type=float, default=5e-5, help="initial learning rate")
+    parser.add_argument('--lr', type=float, default=1e-4, help="initial learning rate")
     parser.add_argument('--optim',type=str.lower,default='adam',choices=['sgd','adam','radam','ranger'],help="select optimizer")
     parser.add_argument('--lr_schedule', type=str, default='poly', help='name of lr schedule: poly, warmpoly')
     parser.add_argument('--num_cycles', type=int, default=1, help='Cosine Annealing Cyclic LR')
@@ -59,7 +59,7 @@ def parse_args():
     # cuda setting
     parser.add_argument('--cuda', type=bool, default=True, help="running on CPU or GPU")
     # checkpoint and log
-    parser.add_argument('--resume', type=str, default="",
+    parser.add_argument('--resume', type=str, default="./checkpoint/cityscapes/DABNetbs8gpu1_trainval/model_517_0.49.pth",
                         help="use this file to load last checkpoint for continuing training")
     parser.add_argument('--savedir', default="./checkpoint/", help="directory to save the model snapshot")
     parser.add_argument('--logFile', default="log.txt", help="storing the training and validation logs")
@@ -118,6 +118,7 @@ def train_model(args):
         weight = torch.from_numpy(datas['classWeights'])
     else:
         weight = None
+    weight = None    # lpw
 
     if args.dataset == 'camvid':
         criteria = CrossEntropyLoss2d(weight=weight, ignore_label=ignore_label)
@@ -164,7 +165,7 @@ def train_model(args):
     if args.resume:
         if os.path.isfile(args.resume):
             checkpoint = torch.load(args.resume)
-            start_epoch = checkpoint['epoch']
+            # start_epoch = checkpoint['epoch']
             model.load_state_dict(checkpoint['model'])
             # model.load_state_dict(convert_state_dict(checkpoint['model']))
             print("=====> loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
@@ -315,8 +316,8 @@ def train(args, train_loader, model, criterion, optimizer, epoch):
         time_taken = time.time() - start_time
 
         if iteration % 100 == 0:
-            print('=====> epoch[%d/%d] iter: (%d/%d) \tcur_lr: %.6f loss: %.3f time:%.2f' % (epoch + 1, args.max_epochs,
-                                                                                         iteration + 1, total_batches,
+            print('=====> epoch[%d/%d] iter: (%d/%d) \tcur_lr: %.6f loss: %.3f time:%.2f' % (epoch, args.max_epochs,
+                                                                                         iteration, total_batches,
                                                                                          lr, loss.item(), time_taken))
 
     time_taken_epoch = time.time() - st
@@ -337,6 +338,7 @@ def val(args, val_loader, model):
       model: model
     return: mean IoU and IoU class
     """
+
     # evaluation mode
     model.eval()
     total_batches = len(val_loader)
@@ -346,8 +348,8 @@ def val(args, val_loader, model):
         with torch.no_grad():
             # input_var = Variable(input).cuda()
             input_var = input.cuda()
-        start_time = time.time()
-        output = model(input_var)
+            start_time = time.time()
+            output = model(input_var)
         time_taken = time.time() - start_time
         if (i % 100==0):
             print("[%d/%d]  time: %.2f" % (i + 1, total_batches, time_taken))

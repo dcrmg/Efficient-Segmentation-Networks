@@ -37,8 +37,8 @@ def build_dataset_train(dataset, input_size, batch_size, train_type, random_scal
 
         valLoader = data.DataLoader(
             CityscapesValDataSet(data_dir, val_data_list, f_scale=1, mean=datas['mean']),
-            batch_size=1, shuffle=True, num_workers=num_workers, pin_memory=True,
-            drop_last=True)
+            batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True,
+            drop_last=False)
     elif dataset == "camvid":
         # inform_data_file collect the information of mean, std and weigth_class
         if not os.path.isfile(inform_data_file):

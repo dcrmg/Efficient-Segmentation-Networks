@@ -11,26 +11,24 @@ from utils.utils import save_predict
 from utils.metric.metric import get_iou
 from utils.convert_state import convert_state_dict
 
-
 def parse_args():
     parser = ArgumentParser(description='Efficient semantic segmentation')
-    parser.add_argument('--model', default="DABNet", help="model name:ESPNet_v2 (default ENet)")
+    parser.add_argument('--model', default="ENet", help="model name:ESPNet_v2 (default ENet)")
     parser.add_argument('--dataset', default="cityscapes", help="dataset: cityscapes or camvid")
     parser.add_argument('--num_workers', type=int, default=1, help="the number of parallel threads")
     parser.add_argument('--batch_size', type=int, default=1,
                         help=" the batch_size is set to 1 when evaluating or testing")
-    parser.add_argument('--checkpoint', type=str,default="./checkpoint/cityscapes/DABNetbs8gpu1_trainval/model_500_0.49.pth",
+    parser.add_argument('--checkpoint', type=str,default="./checkpoint/cityscapes/ENetbs8gpu1_trainval/model_81_0.58.pth",
                         help="use the file to load the checkpoint for evaluating or testing ")
     parser.add_argument('--save_seg_dir', type=str, default="./result/",
                         help="saving path of prediction result")
     parser.add_argument('--best', action='store_true', help="Get the best result among last few checkpoints")
     parser.add_argument('--save', action='store_true', default= True, help="Save the predicted image")
     parser.add_argument('--cuda', default=True, help="run on CPU or GPU")
-    parser.add_argument("--gpus", default="5", type=str, help="gpu ids (default: 0)")
+    parser.add_argument("--gpus", default="4", type=str, help="gpu ids (default: 0)")
     args = parser.parse_args()
 
     return args
-
 
 
 
