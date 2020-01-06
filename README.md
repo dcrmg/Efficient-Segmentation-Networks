@@ -142,7 +142,7 @@ This project has been tailored to suit the [Cityscapes](https://www.cityscapes-d
 #### Clone this Repo
 
 ```
-git clone https://github.com/xiaoyufenfei/Efficient-Segmentation-Networks
+git clone https://github.com/dcrmg/Efficient-Segmentation-Networks.git
 cd Efficient-Segmentation-Networks
 ```
 
