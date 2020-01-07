@@ -361,6 +361,7 @@ def val(args, val_loader, model):
 
     data_list = []
     for i, (input, label, size, name) in enumerate(val_loader):
+        start_time = time.time()
         with torch.no_grad():
             # input_var = Variable(input).cuda()
             input_var = input.cuda()
